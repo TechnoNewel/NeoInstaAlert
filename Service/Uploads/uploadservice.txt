@@ -1,0 +1,473 @@
+var express = require('express');
+var router = express.Router();
+var connect = require('../../Data/Connect');
+var datamodel = require('../../Data/DataModel');
+var dataaccess = require('../../Data/DataAccess');
+var dataconn = require('../../Data/DataConnection');
+var Sequelize = require("sequelize");
+const Op = Sequelize.Op;
+var multer = require("multer");
+const path = require('path');
+var upload = multer();
+const fse = require("fs-extra");
+const fs = require("fs");
+const config = require('../../Config');
+var moment = require("moment");
+
+var routes = function () {
+
+    router.route('/GetAllUsersName')
+        .get(function (req, res) {
+            const UserMst = datamodel.UserMst();
+
+            var param = {
+                attributes: [
+                    [Sequelize.fn('DISTINCT', Sequelize.col('EmpName')), 'EmpName'],
+                ],
+            };
+
+            dataaccess.FindAll(UserMst, param)
+                .then(function (result) {
+                    if (result != null) {
+
+                        res.status(200).json({ Success: true, Message: 'UserMst Table Access', Data: result });
+                    }
+                    else {
+                        res.status(200).json({ Success: false, Message: 'User Has No Access Of UserMst Table', Data: null });
+                    }
+                }, function (err) {
+                    dataconn.errorlogger('UploadService', 'GetAllUsersName', err);
+                    res.status(200).json({ Success: false, Message: 'User Has No Access Of UserMst Table', Data: null });
+                });
+
+        });
+
+
+
+    // UAN_Number,PF_Number,Name,Date_Of_Birth,Date_Of_Joining,Gender,Fathers_Husbend_Name,RelationShip_With_Member,MobileNo,EmailId,Nationality,
+    // Wages_Of_Joining,Qualification,MartialStatus,InternationalWorker,Country_Of_Origin,PassportNumber,PassportValidFromDate,
+    // PassportValidToDate,IsPhysically_Handicapped,Locomotive,Hearing,Visual,Pan,NameAsPerPan,AdharNo,NameAsOnAdhar,
+    // Remarks,Date,
+
+
+    router.route('/Get_NavMTDReport')
+        .post(function (req, res) {
+
+            var querytext = 'SELECT "NAV_MTD_Report"(:p_date,:pscheme_name,:p_ref); FETCH ALL IN "abc"';
+            var param = {
+                replacements: {
+                    p_date: req.body.p_date,
+                    pscheme_name: req.body.pscheme_name,
+                    p_ref: 'abc'
+                },
+                type: connect.sequelize.QueryTypes.SELECT
+            }
+
+            connect.sequelize
+                .query(querytext, param)
+                .then(function (result) {
+                    //       console.log("result", result);
+                    result.shift();
+                    res.status(200).json({ Success: true, Message: "Report Data Access", Data: result });
+                }, function (err) {
+                    dataconn.errorlogger('ReportService', 'Get_NavMTDReport', err);
+                    res.status(200).json({ Success: false, Message: 'User has no access of Report', Data: null });
+                    console.log("result", err);
+                });
+        });
+
+    router.route('/SaveNewEmployeeDataUpload')
+        .post(function (req, res) {
+
+            const NewEmployeePFDetail_Upload = datamodel.NewEmployeePFDetail_Upload();
+
+            //            var querytext = 'SELECT "NewEmployeePFDetail_Upload"(:UAN_Number,:PF_Number,:pName,:DateOfBirth,:Gender,:Fathers_Husbend_Name,:RelationShip_With_Member,:MobileNo,:EmailId,:Nationality,:Wages_Of_Joining,:Qualification,:MartialStatus,:InternationalWorker,:Country_Of_Origin,:PassportNumber,:PassportValidFromDate,:PassportValidToDate,:IsPhysically_Handicapped,:Locomotive,:Hearing,:Visual,:Pan,:NameAsPerPan,:AdharNo,:NameAsOnAdhar,:Remarks,:pDate,:Status,:CreatedBy,:UserName,:p_ref); FETCH ALL IN "abc"';
+
+            var List2 = [];
+
+            let mapDetails = [];
+            //    console.log("mapitem at index 14:", req.body.tabledata);
+
+            let values = [];
+
+            req.body.tabledata.forEach(mapitem => {
+                //     console.log("......",mapitem)
+
+
+                values.push({
+                    UAN_Number: mapitem.UAN_Number,
+                    PF_Number: mapitem.PF_Number,
+                    pName: mapitem.Name,
+                    DateOfBirth: mapitem.Date_Of_Birth,
+                    Date_Of_Joining: mapitem.Date_Of_Joining,
+                    Gender: mapitem.Gender,
+                    Fathers_Husbend_Name: mapitem.Fathers_Husbend_Name,
+                    RelationShip_With_Member: mapitem.RelationShip_With_Member,
+                    MobileNo: mapitem.MobileNo,
+                    EmailId: mapitem.EmailId,
+                    Nationality: mapitem.Nationality,
+                    Wages_Of_Joining: mapitem.Wages_Of_Joining,
+                    Qualification: mapitem.Qualification,
+                    MartialStatus: mapitem.MartialStatus,
+                    InternationalWorker: mapitem.InternationalWorker,
+                    Country_Of_Origin: mapitem.Country_Of_Origin,
+                    PassportNumber: mapitem.PassportNumber,
+                    PassportValidFromDate: mapitem.PassportValidFromDate,
+                    PassportValidToDate: mapitem.PassportValidToDate,
+                    IsPhysically_Handicapped: mapitem.IsPhysically_Handicapped,
+                    Locomotive: mapitem.Locomotive,
+                    Hearing: mapitem.Hearing,
+                    Visual: mapitem.Visual,
+                    Pan: mapitem.Pan,
+                    NameAsPerPan: mapitem.NameAsPerPan,
+                    AdharNo: mapitem.AdharNo,
+                    NameAsOnAdhar: mapitem.NameAsOnAdhar,
+                    Date: mapitem.UploadDate,
+                    BatchId: mapitem.BatchId,
+                    Status: 'Draft',
+                    CreatedBy: mapitem.userid,
+                    CreatedDate: connect.sequelize.fn("NOW"),
+                    UserName: mapitem.UserName
+                });
+                // List2.push(values)
+            });
+            // console.log("List......",mapDetails[0])
+
+
+            // console.log("List......",values)
+
+            console.log("InternationalWorker:", values[0]?.InternationalWorker);
+
+            //console.log("List......",values[14]?.InternationalWorker)
+
+            //  var querytext = 'SELECT "NewEmployeePFDetail_Upload"(:UAN_Number,:PF_Number,:pName,:DateOfBirth,:Gender,:Fathers_Husbend_Name,:RelationShip_With_Member,:MobileNo,:EmailId,:Nationality,:Wages_Of_Joining,:Qualification,:MartialStatus,:InternationalWorker,:Country_Of_Origin,:PassportNumber,:PassportValidFromDate,:PassportValidToDate,:IsPhysically_Handicapped,:Locomotive,:Hearing,:Visual,:Pan,:NameAsPerPan,:AdharNo,:NameAsOnAdhar,:Remarks,:pDate,:Status,:CreatedBy,:UserName,:p_ref); FETCH ALL IN "abc"';
+
+
+            //  var param = {
+            //         replacements: {
+
+            //         UAN_Number: values[0]?.UAN_Number,
+            //         PF_Number: values[1]?.PF_Number,
+            //         pName: values[2]?.Name,
+            //         DateOfBirth: values[3]?.Date_Of_Birth,
+            //         Date_Of_Joining: values[4]?.Date_Of_Joining,
+            //         Gender: values[5]?.Gender,
+            //         Fathers_Husbend_Name: values[6]?.Fathers_Husbend_Name,
+            //         RelationShip_With_Member: values[7]?.RelationShip_With_Member,
+            //         MobileNo: values[8]?.MobileNo,
+            //         EmailId: values[9]?.EmailId,
+            //         Nationality: values[10]?.Nationality,
+            //         Wages_Of_Joining: values[11]?.Wages_Of_Joining,
+            //         Qualification: values[12]?.Qualification,
+            //         MartialStatus: values[13]?.MartialStatus,
+            //         InternationalWorker: values[14]?.InternationalWorker,
+            //         Country_Of_Origin: values[15]?.Country_Of_Origin,
+            //         PassportNumber: values[16]?.PassportNumber,
+            //         PassportValidFromDate: values[17]?.PassportValidFromDate,
+            //         PassportValidToDate: values[18]?.PassportValidToDate,
+            //         IsPhysically_Handicapped: values[19]?.IsPhysically_Handicapped,
+            //         Locomotive: values[20]?.Locomotive,
+            //         Hearing: values[21]?.Hearing,
+            //         Visual: values[22]?.Visual,
+            //         Pan: values[23]?.Pan,
+            //         NameAsPerPan: values[24]?.NameAsPerPan,
+            //         AdharNo: values[25]?.AdharNo,
+            //         NameAsOnAdhar: values[26]?.NameAsOnAdhar,
+            //         Remarks: '',
+            //         pDate: values[27]?.Date,
+            //         Status: 'Draft',
+            //         CreatedBy: values[30]?.CreatedBy,
+            //         UserName: values[32]?.UserName
+            //     },
+            //     type: connect.sequelize.QueryTypes.SELECT
+            // };
+
+            console.log('values', values);
+
+
+            let paramReplacements = {};
+
+            let finalarray = [];
+            values.forEach((key, index) => {
+
+                paramReplacements.Remarks = '';
+                paramReplacements.Status = 'Draft';
+
+                var querytext = 'SELECT "Insert_NewEmployeePF_Data"(:uan_number,:pf_number,:pname,:dateofbirth,:date_of_joining,:gender,:fathers_husbend_name,:relationship_with_member,:mobileno,:emailid,:nationality,:wages_of_joining,:qualification,:martialstatus,:internationalworker,:country_of_origin,:passportnumber,:passportvalidfromdate,:passportvalidtodate,:isphysically_handicapped,:locomotive,:hearing,:visual,:pan,:nameasperpan,:adharno,:nameasonadhar,:remarks,:pdate,:status,:createdby,:username,:p_ref); FETCH ALL IN "abc"';
+
+                var param = {
+                    replacements: {
+                        uan_number: key.UAN_Number,
+                        pf_number: key.PF_Number,
+                        pname: key.pName,
+                        dateofbirth: key.DateOfBirth,
+                        date_of_joining: key.Date_Of_Joining,
+                        gender: key.Gender,
+                        fathers_husbend_name: key.Fathers_Husbend_Name,
+                        relationship_with_member: key.RelationShip_With_Member,
+                        mobileno: key.MobileNo,
+                        emailid: key.EmailId,
+                        nationality: key.Nationality,
+                        wages_of_joining: key.Wages_Of_Joining,
+                        qualification: key.Qualification,
+                        martialstatus: key.MartialStatus,
+                        internationalworker: key.InternationalWorker,
+                        country_of_origin: key.Country_Of_Origin,
+                        passportnumber: key.PassportNumber,
+                        passportvalidfromdate: key.PassportValidFromDate,
+                        passportvalidtodate: key.PassportValidToDate,
+                        isphysically_handicapped: key.IsPhysically_Handicapped,
+                        locomotive: key.Locomotive,
+                        hearing: key.Hearing,
+                        visual: key.Visual,
+                        pan: key.Pan,
+                        nameasperpan: key.NameAsPerPan,
+                        adharno: key.AdharNo,
+                        nameasonadhar: key.NameAsOnAdhar,
+                        remarks: '',
+                        pdate: key.Date,
+                        status: 'Draft',
+                        createdby: key.CreatedBy,
+                        username: key.UserName,
+
+                        p_ref: 'abc'
+
+                    },
+                    type: connect.sequelize.QueryTypes.SELECT
+                }
+                console.log('param', param);
+
+                connect.sequelize
+                    .query(querytext, param)
+                    .then(function (result) {
+                        // Extract results from the array
+                        var resultSet = result[0];
+                        finalarray.push(resultSet);
+                        if (values.length == index + 1) {
+                            res.status(200).json({ Success: true, Message: "Report Data Access", Data: finalarray });
+                        }
+
+                    })
+                    .catch(function (err) {
+                        dataconn.errorlogger('UploadService', 'SaveNewEmployeeDataUpload', err);
+                        res.status(200).json({ Success: false, Message: 'User has no access to Report', Data: null });
+                        console.log("result", err);
+                    });
+
+
+            });
+
+            //  var param = {
+            //     replacements: {
+            //         UAN_Number: values[0]?.UAN_Number,
+            //         PF_Number: values[1]?.PF_Number,
+            //         pName: values[2]?.Name,
+            //         DateOfBirth: values[3]?.Date_Of_Birth,
+            //         Date_Of_Joining: values[4]?.Date_Of_Joining,
+            //         Gender: values[5]?.Gender,
+            //         Fathers_Husbend_Name: values[6]?.Fathers_Husbend_Name,
+            //         RelationShip_With_Member: values[7]?.RelationShip_With_Member,
+            //         MobileNo: values[8]?.MobileNo,
+            //         EmailId: values[9]?.EmailId,
+            //         Nationality: values[10]?.Nationality,
+            //         Wages_Of_Joining: values[11]?.Wages_Of_Joining,
+            //         Qualification: values[12]?.Qualification,
+            //         MartialStatus: values[13]?.MartialStatus,
+            //         InternationalWorker: values[14]?.InternationalWorker,
+            //         Country_Of_Origin: values[15]?.Country_Of_Origin,
+            //         PassportNumber: values[16]?.PassportNumber,
+            //         PassportValidFromDate: values[17]?.PassportValidFromDate,
+            //         PassportValidToDate: values[18]?.PassportValidToDate,
+            //         IsPhysically_Handicapped: values[19]?.IsPhysically_Handicapped,
+            //         Locomotive: values[20]?.Locomotive,
+            //         Hearing: values[21]?.Hearing,
+            //         Visual: values[22]?.Visual,
+            //         Pan: values[23]?.Pan,
+            //         NameAsPerPan: values[24]?.NameAsPerPan,
+            //         AdharNo: values[25]?.AdharNo,
+            //         NameAsOnAdhar: values[26]?.NameAsOnAdhar,
+            //         Remarks: '',
+            //         pDate: values[27]?.Date,
+            //         Status: 'Draft',
+            //         CreatedBy: values[30]?.CreatedBy,
+            //         UserName: values[32]?.UserName,
+            //         p_ref: 'abc',
+            //         InternationalWorker: values[14]?.InternationalWorker
+            //     },
+            //     type: connect.sequelize.QueryTypes.SELECT
+            // };
+
+
+            //     connect.sequelize
+            //         .query(querytext, param)
+            //         .then(function (result) {
+            //             //       console.log("result", result);
+            //             result.shift();
+            //             res.status(200).json({ Success: true, Message: "Report Data Access", Data: result });
+            //         }, function (err) {
+            //             dataconn.errorlogger('UploadService', 'SaveNewEmployeeDataUpload', err);
+            //             res.status(200).json({ Success: false, Message: 'User has no access of Report', Data: null });
+            //             console.log("result", err);
+            //         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // dataaccess.BulkCreate(NewEmployeePFDetail_Upload, mapDetails).then(
+            //     (resultfinal1) => {
+            //         console.log("result2: ", resultfinal1[0]);
+            //         if (resultfinal1 != "") {
+            //             res.status(200).json({ Success: true, Message: ' NewEmployeePFDetail_Upload saved successfully', Data: resultfinal1 });
+            //         }
+            //         else {
+            //             res.status(200).json({ Success: false, Message: 'Error occurred while uploading NewEmployeePFDetail_Upload files', Data: err1 });
+            //         }
+            //     }).catch((err1) => {
+            //         console.log('err1', err1);
+            //         res.status(200).json({ Success: false, Message: 'Error occurred while uploading NewEmployeePFDetail_Upload', Data: err1 });
+            //     })
+        });
+
+
+
+
+
+    router.route('/Get_NavMTDReport')
+        .post(function (req, res) {
+
+            var querytext = 'SELECT "NAV_MTD_Report"(:p_date,:pscheme_name,:p_ref); FETCH ALL IN "abc"';
+            var param = {
+                replacements: {
+                    p_date: req.body.p_date,
+                    pscheme_name: req.body.pscheme_name,
+                    p_ref: 'abc'
+                },
+                type: connect.sequelize.QueryTypes.SELECT
+            }
+
+            connect.sequelize
+                .query(querytext, param)
+                .then(function (result) {
+                    //       console.log("result", result);
+                    result.shift();
+                    res.status(200).json({ Success: true, Message: "Report Data Access", Data: result });
+                }, function (err) {
+                    dataconn.errorlogger('ReportService', 'Get_NavMTDReport', err);
+                    res.status(200).json({ Success: false, Message: 'User has no access of Report', Data: null });
+                    console.log("result", err);
+                });
+        });
+
+
+    router.route('/GetAllEmployeeDetails')
+        .post(function (req, res) {
+            const NewEmployeePFDetail_Upload = datamodel.NewEmployeePFDetail_Upload();
+
+
+            var param = {
+                attributes: ['Id', 'UAN_Number', 'PF_Number', 'Name', 'Date_Of_Birth', 'Date_Of_Joining', 'Gender', 'Fathers_Husbend_Name',
+                    'RelationShip_With_Member', 'MobileNo', 'EmailId', 'Nationality', 'Wages_Of_Joining', 'Qualification', 'MartialStatus',
+                    'InternationalWorker', 'Country_Of_Origin', 'PassportNumber', 'PassportValidFromDate', 'PassportValidToDate', 'IsPhysically_Handicapped',
+                    'Locomotive', 'Hearing', 'Visual', 'Pan', 'NameAsPerPan', 'AdharNo', 'NameAsOnAdhar', 'Remarks', 'Date', 'BatchId', 'Status', 'UserName'],
+
+                where: {
+                    CreatedBy: req.body.p_userid
+                }
+            };
+
+
+            // var param = {
+            //     attributes: ['Id', 'UAN_Number', 'PF_Number', 'Name', 'Date_Of_Birth', 'Date_Of_Joining', 'Gender', 'Fathers_Husbend_Name',
+            //       'RelationShip_With_Member', 'MobileNo', 'EmailId', 'Nationality', 'Wages_Of_Joining', 'Qualification', 'MartialStatus',
+            //       'InternationalWorker', 'Country_Of_Origin', 'PassportNumber', 'PassportValidFromDate', 'PassportValidToDate', 'IsPhysically_Handicapped',
+            //       'Locomotive', 'Hearing', 'Visual', 'Pan', 'NameAsPerPan', 'AdharNo', 'NameAsOnAdhar', 'Remarks', 'Date', 'BatchId', 'Status'
+            //     ],
+            //     where: {
+            //       // Add your conditions here
+            //       // Example: Status should be 'Active'
+            //       Status: 'Active'
+            //     }
+            //   };
+
+            dataaccess.FindAll(NewEmployeePFDetail_Upload, param)
+                .then(function (result) {
+                    if (result != null) {
+
+                        res.status(200).json({ Success: true, Message: 'NewEmployeePFDetail_Upload Table Access', Data: result });
+                    }
+                    else {
+                        res.status(200).json({ Success: false, Message: 'User Has No Access Of NewEmployeePFDetail_Upload Table', Data: null });
+                    }
+                }, function (err) {
+                    dataconn.errorlogger('UploadService', 'GetAllEmployeeDetails', err);
+                    res.status(200).json({ Success: false, Message: 'User Has No Access Of NewEmployeePFDetail_Upload Table', Data: null });
+                });
+
+        });
+
+
+    router.route('/Get_SchemeName')
+        .post(function (req, res) {
+
+            var querytext = 'SELECT "SchemeName"(:p_ref); FETCH ALL IN "abc"';
+            var param = {
+                replacements: {
+                    p_ref: 'abc'
+                },
+                type: connect.sequelize.QueryTypes.SELECT
+            }
+
+            connect.sequelize
+                .query(querytext, param)
+                .then(function (result) {
+                    //       console.log("result", result);
+                    result.shift();
+                    res.status(200).json({ Success: true, Message: "Report Data Access", Data: result });
+                }, function (err) {
+                    dataconn.errorlogger('ReportService', 'Get_AIFTradeReport', err);
+                    res.status(200).json({ Success: false, Message: 'User has no access of Report', Data: null });
+                    console.log("result", err);
+                });
+        });
+
+
+    router.route('/GetMaxId')
+        .get(function (req, res) {
+            const NewEmployeePFDetail_Upload = datamodel.NewEmployeePFDetail_Upload();
+
+            dataaccess.FindOne(NewEmployeePFDetail_Upload, {
+                attributes: [
+                    [connect.sequelize.fn('MAX', connect.sequelize.col('BatchId')), 'BatchId']
+                ]
+            })
+                .then(function (result) {
+                    const maxId = result.BatchId;
+
+                    res.status(200).json({ Success: true, Message: 'Max Id from NewEmployeePFDetail_Upload', Data: { maxId } });
+                })
+                .catch(function (err) {
+                    dataconn.errorlogger('UploadService', 'GetMaxId', err);
+                    res.status(500).json({ Success: false, Message: 'Error retrieving Max Id', Data: null });
+                });
+        });
+
+
+
+    return router;
+
+};
+
+module.exports = routes;

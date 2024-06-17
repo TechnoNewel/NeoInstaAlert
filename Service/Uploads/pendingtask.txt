@@ -1,0 +1,17 @@
+DD-MM-YYYY
+
+1- top10 holding focus10 excel export to be check
+
+2- portfolio report pms buy rate change
+
+3- Nav returns report print option
+
+4- Nav Tank Report Export has formatting issue
+
+5- Pending Buy Sell Report Excel To be confirmed with pratyush -- exported file 5
+
+6- Limit Monitoring Report changes done 
+
+7- Fund Master 
+
+8- XIRR Master 
